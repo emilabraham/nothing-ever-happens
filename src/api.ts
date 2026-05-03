@@ -188,7 +188,7 @@ export const getUserBets = async (username: string) => {
   return allBets;
 };
 
-export const placeBet = (bet: {
+export const placeBet = async (bet: {
   contractId: string;
   outcome: "YES" | "NO";
   amount: number;
@@ -204,7 +204,7 @@ export const placeBet = (bet: {
   }).then((res) => res.json());
 };
 
-export const cancelBet = (betId: string) => {
+export const cancelBet = async (betId: string) => {
   return fetch(`${API_URL}/bet/cancel/${betId}`, {
     method: "POST",
     headers: {
