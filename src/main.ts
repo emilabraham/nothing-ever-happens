@@ -13,7 +13,7 @@ const main = async () => {
     throw new Error("Please set MANIFOLD_USERNAME variable in .env file.");
   if (!key)
     throw new Error("Please set MANIFOLD_API_KEY variable in .env file.");
-  if (!slug) throw new Error("Please set MANIFOLD_SLUG variable in .env file.");
+  if (!slug) throw new Error("Please set MANIFOLD_MARKET_SLUG variable in .env file.");
 
   console.log("Starting simple trading bot...");
 
