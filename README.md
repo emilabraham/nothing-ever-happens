@@ -1,7 +1,10 @@
-# simple-trader
-Simple prototype trading bot using Manifold API.
+# nothing-ever-happens
+Simple trading bot using Manifold API.
 
-The strategy implemented here polls a market for updates and then bets the price will revert. 
+The strategy implemented here polls for binary markets that predict something exciting will happen.
+It bets against that. It bets that status quo will remain.
+
+It specifically avoids sports markets since those typically always have a winner. So there can never be a status quo.
 
 # Run this bot!
 
@@ -18,6 +21,3 @@ The strategy implemented here polls a market for updates and then bets the price
 4. Install npm packages with `yarn`
 5. Run `yarn start`
 
-(Be careful! This bot will be placing trades with your mana.)
-
-Feel free to fork and extend this bot with more advanced strategies!
