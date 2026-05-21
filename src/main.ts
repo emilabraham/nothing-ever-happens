@@ -1,4 +1,4 @@
-import { getBets, getMarketBySlug, placeBet } from "./api";
+import { getBets, getMarketBySlug, placeBet, searchMarkets, LiteMarket } from "./api";
 
 const BET_AMOUNT = 25;
 const PROB_THESHOLD = 0.02;
@@ -20,6 +20,11 @@ const main = async () => {
 
   const market = await getMarketBySlug(slug);
   console.log(`Loaded market: ${market.question}\n`);
+
+  let searchedMarkets: LiteMarket[] = await searchMarkets(`open`, `BINARY`, 1000);
+  console.log(`size of searched markets: ${searchedMarkets.length}`);
+  let filteredSearchedMarkets =  searchedMarkets.filter((market) => !market.isResolved);
+  console.log(`size of filtered markets: ${filteredSearchedMarkets.length}`);
 
   const contractId = market.id;
 

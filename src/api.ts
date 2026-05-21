@@ -7,45 +7,52 @@ const API_URL = "https://manifold.markets/api/v0";
 // Information about a market, but without bets or comments
 export type LiteMarket = {
   // Unique identifer for this market
-  id: string;
+  id: string
 
   // Attributes about the creator
-  creatorUsername: string;
-  creatorName: string;
-  createdTime: number; // milliseconds since epoch
-  creatorAvatarUrl?: string;
+  creatorId: string
+  creatorUsername: string
+  creatorName: string
+  creatorAvatarUrl?: string
 
-  // Market attributes. All times are in milliseconds since epoch
-  closeTime?: number; // Min of creator's chosen date, and resolutionTime
-  question: string;
-  description: string;
-
-  // A list of tags on each market. Any user can add tags to any market.
-  // This list also includes the predefined categories shown as filters on the home page.
-  tags: string[];
+  // Market atributes
+  createdTime: number // When the market was created
+  closeTime?: number // Min of creator's chosen date, and resolutionTime
+  question: string
 
   // Note: This url always points to https://manifold.markets, regardless of what instance the api is running on.
   // This url includes the creator's username, but this doesn't need to be correct when constructing valid URLs.
   //   i.e. https://manifold.markets/Austin/test-market is the same as https://manifold.markets/foo/test-market
-  url: string;
+  url: string
 
-  outcomeType: string; // BINARY, FREE_RESPONSE, or NUMERIC
-  mechanism: string; // dpm-2 or cpmm-1
+  outcomeType: string // BINARY, FREE_RESPONSE, MULTIPLE_CHOICE, NUMERIC, PSEUDO_NUMERIC, BOUNTIED_QUESTION, POLL, or ...
+  mechanism: string // dpm-2, cpmm-1, or cpmm-multi-1
 
-  probability: number;
-  pool: { outcome: number }; // For CPMM markets, the number of shares in the liquidity pool. For DPM markets, the amount of mana invested in each answer.
-  p?: number; // CPMM markets only, probability constant in y^p * n^(1-p) = k
-  totalLiquidity?: number; // CPMM markets only, the amount of mana deposited into the liquidity pool
+  probability: number
+  pool: { outcome: number } // For CPMM markets, the number of shares in the liquidity pool. For DPM markets, the amount of mana invested in each answer.
+  p?: number // CPMM markets only, probability constant in y^p * n^(1-p) = k
+  totalLiquidity?: number // CPMM markets only, the amount of mana deposited into the liquidity pool
 
-  volume: number;
-  volume7Days: number;
-  volume24Hours: number;
+  value?: number // PSEUDO_NUMERIC markets only, the current market value, which is mapped from probability using min, max, and isLogScale.
+  min?: number // PSEUDO_NUMERIC markets only, the minimum resolvable value
+  max?: number // PSEUDO_NUMERIC markets only, the maximum resolvable value
+  isLogScale?: boolean // PSEUDO_NUMERIC markets only, if true `number = (max - min + 1)^probability + minstart - 1`, otherwise `number = min + (max - min) * probability`
 
-  isResolved: boolean;
-  resolutionTime?: number;
-  resolution?: string;
-  resolutionProbability?: number; // Used for BINARY markets resolved to MKT
-};
+  volume: number
+  volume24Hours: number
+
+  isResolved: boolean
+  resolutionTime?: number
+  resolution?: string
+  resolutionProbability?: number // Used for BINARY markets resolved to MKT
+  uniqueBettorCount: number
+
+  lastUpdatedTime?: number
+  lastBetTime?: number
+
+  token?: 'MANA' | 'CASH' // mana or prizecash question
+  siblingContractId?: string // id of the prizecash or mana version of this question that you get to by toggling.
+}
 
 // A complete market, along with bets, comments, and answers (for free response markets)
 export type FullMarket = LiteMarket & {
@@ -118,7 +125,7 @@ export const getFullMarket = async (id: string) => {
   return market;
 };
 
-const getMarkets = async (limit = 1000, before?: string) => {
+export const getMarkets = async (limit = 1000, before?: string) => {
   const markets: LiteMarket[] = await fetch(
     before
       ? `${API_URL}/markets?limit=${limit}&before=${before}`
@@ -212,4 +219,24 @@ export const cancelBet = async (betId: string) => {
       Authorization: `Key ${yourKey}`,
     },
   }).then((res) => res.json());
+};
+
+export const searchMarkets = async (
+//  term?: string,
+//  sort?: string,
+  filter?: string,
+  contractType?: string,
+//  topicSlug?: string,
+//  creatorId?: string,
+  limit?: number,
+//  offset?: number,
+//  beforeTime?: number,
+//  liquidity?: number,
+) => {
+  let url = `${API_URL}/search-markets?`;
+  if (contractType) url += `contractType=${contractType}`;
+  if (filter) url += `&filter=${filter}`;
+  if (limit) url += `&limit=${limit}`;
+  const markets: LiteMarket[] = await fetch(url).then((res) => res.json());
+  return markets;
 };
