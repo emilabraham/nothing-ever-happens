@@ -1,4 +1,4 @@
-import { getBets, getMarketBySlug, placeBet, searchMarkets, LiteMarket } from "./api";
+import { getBets, getMarketBySlug, placeBet, searchMarkets } from "./api";
 
 const BET_AMOUNT = 25;
 const PROB_THESHOLD = 0.02;
