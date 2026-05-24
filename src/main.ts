@@ -25,8 +25,17 @@ const main = async () => {
 
   console.log(`There are ${allMarkets.length} markets in total!`);
   let filteredMarkets: LiteMarket[] = filterOutIneligibleMarkets(allMarkets);
-  let firstFullMarket: FullMarket = await getFullMarket(filteredMarkets[0].id);
-  debugger;
+  console.log(`There are ${filteredMarkets.length} filtered markets`);
+  let fullMarkets: FullMarket[] = [];
+  //TODO: Need to respect 500/minute rate limit
+  for(let i = 0; i < 400; i++) {
+    let retrievedFullMarket: FullMarket = await getFullMarket(filteredMarkets[i].id);
+    console.log(`Retrieved full market ${i}`);
+    fullMarkets.push(retrievedFullMarket);
+  }
+  console.log(`There are ${fullMarkets.length} full markets`);
+  let filteredFullMarkets: FullMarket[] = fullMarkets.filter((market) => !containsIneligibleSlug(market));
+  console.log(`There are ${filteredFullMarkets.length} full markets without inelligible slugs`);
 
   //let fullMarkets: FullMarket[] = toFullMarkets(filteredMarkets);
 
@@ -110,6 +119,28 @@ const main = async () => {
 //const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 //const roundProb = (prob: number) => Math.round(prob * 100) / 100;
 
+const ineligibleGroupSlugs: string[] = [
+  'sports-default',
+  'soccer',
+  'football',
+  'nfl',
+  'nba',
+  'college-football',
+  'basketball',
+  'premiere-league',
+  '2022-fifa-world-cup',
+  'motorsports',
+  'hockey',
+  'nhl',
+  'baseball',
+  'soccer-friendlies',
+  'chess',
+  'road-bicycle-racing',
+  'mlb',
+  'uefa-champions-league',
+  'college-basketball'
+];
+
 function filterOutIneligibleMarkets(markets: LiteMarket[]): LiteMarket[] {
   const filteredMarkets = markets
   .filter((market: LiteMarket) => !market.isResolved)
@@ -120,10 +151,19 @@ function filterOutIneligibleMarkets(markets: LiteMarket[]): LiteMarket[] {
 
 function toFullMarkets(markets: LiteMarket[]): FullMarket[] {
   let fullMarkets = [];
-  let firstMarket = getFullMarket(markets[0].id);
-  fullMarkets.push(firstMarket);
+  let marketCount = 0;
+  fullMarkets = markets.map(async (market: LiteMarket) => {
+    console.log(`Retrieving full market data for market ${marketCount++}`);
+    return await getFullMarket(market.id)
+  });
   return fullMarkets;
 }
+
+function containsIneligibleSlug(market: FullMarket): boolean {
+  let result: boolean = ineligibleGroupSlugs.some(slug => market.groupSlugs?.includes(slug));
+  return result
+}
+
 
 if (require.main === module) {
   main();
