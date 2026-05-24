@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Simple prototype trading bot using Manifold API",
   "scripts": {
-    "start": "ts-node src/main.ts"
+    "start": "ts-node src/main.ts",
+    "debug": "node inspect -r ts-node/register src/main.ts"
   },
   "author": "Manifold",
   "license": "MIT",

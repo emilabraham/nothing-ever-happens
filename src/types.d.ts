@@ -1,3 +1,15 @@
+//See https://tiptap.dev/docs/guides/output-json-html#option-1-json
+//Created this type to fulfill FullMarket rather than installing/importing tiptap.
+//We won't really need it.
+type JSONContent = {
+  type?: string
+  attrs?: Record<string, any>
+  content?: JSONContent[]
+  marks?: { type: string; attrs?: Record<string, any>; [key: string]: any }[]
+  text?: string
+  [key: string]: any
+}
+
 type LiteMarket = {
   // Unique identifer for this market
   id: string
@@ -47,10 +59,40 @@ type LiteMarket = {
   siblingContractId?: string // id of the prizecash or mana version of this question that you get to by toggling.
 }
 
-// A complete market, along with bets, comments, and answers (for free response markets)
+type Answer = {
+  id: string
+  contractId: string
+  createdTime: number
+  text: string
+  number: number
+  userId: string
+  username: string
+  name: string
+  avatarUrl: string
+  probability: number
+}
+
+// A complete market, along with answers (for free response markets)
 type FullMarket = LiteMarket & {
-  bets: Bet[];
-};
+  answers?: Answer[] // multi markets only
+  shouldAnswersSumToOne?: boolean // multi markets only, whether answers are dependant (that is add up to 100%, typically used when only one answer should win). Always true for dpm-2 multiple choice and free response
+  addAnswersMode?: 'ANYONE' | 'ONLY_CREATOR' | 'DISABLED' // multi markets only, who can add answers
+
+  options?: { text: string; votes: number }[] // poll only
+
+  totalBounty?: number // bounty only
+  bountyLeft?: number // bounty only
+
+  description: JSONContent // Rich text content. See https://tiptap.dev/docs/guides/output-json-html#option-1-json
+  textDescription: string // string description without formatting, images, or embeds
+  coverImageUrl?: string
+  groupSlugs?: string[] // topics tagged in this market
+}
+
+// A complete market, along with bets, comments, and answers (for free response markets)
+//type FullMarket = LiteMarket & {
+//  bets: Bet[];
+//};
 
 type Bet = {
   id: string;

@@ -1,4 +1,4 @@
-import { getBets, getMarketBySlug, placeBet, searchMarkets } from "./api";
+import { getBets, getMarketBySlug, placeBet, searchMarkets, getAllMarkets, getFullMarket } from "./api";
 
 const BET_AMOUNT = 25;
 const PROB_THESHOLD = 0.02;
@@ -21,85 +21,109 @@ const main = async () => {
   const market = await getMarketBySlug(slug);
   console.log(`Loaded market: ${market.question}\n`);
 
-  let searchedMarkets: LiteMarket[] = await searchMarkets(`open`, `BINARY`, 1000);
-  console.log(`size of searched markets: ${searchedMarkets.length}`);
-  let filteredSearchedMarkets =  searchedMarkets.filter((market) => !market.isResolved);
-  console.log(`size of filtered markets: ${filteredSearchedMarkets.length}`);
+  let allMarkets: LiteMarket[] = await getAllMarkets();
 
-  const contractId = market.id;
+  console.log(`There are ${allMarkets.length} markets in total!`);
+  let filteredMarkets: LiteMarket[] = filterOutIneligibleMarkets(allMarkets);
+  let firstFullMarket: FullMarket = await getFullMarket(filteredMarkets[0].id);
+  debugger;
 
-  let lastBetId: string | undefined = undefined;
-  let lastProbability: number | undefined = undefined;
+  //let fullMarkets: FullMarket[] = toFullMarkets(filteredMarkets);
 
-  while (true) {
-    // poll every 15 seconds
-    if (lastBetId !== undefined) await sleep(15 * 1000);
+  //let searchedMarkets: LiteMarket[] = await searchMarkets(`open`, `BINARY`, 1000);
+  //console.log(`size of searched markets: ${searchedMarkets.length}`);
+  //let filteredSearchedMarkets =  searchedMarkets.filter((market) => !market.isResolved);
+  //console.log(`size of filtered markets: ${filteredSearchedMarkets.length}`);
 
-    const loadedBets = await getBets({
-      contractSlug: slug,
-      limit: 5,
-    });
+//  const contractId = market.id;
+//
+//  let lastBetId: string | undefined = undefined;
+//  let lastProbability: number | undefined = undefined;
 
-    // filter out limit orders, redemptions, and antes
-    const newBets = loadedBets.filter(
-      (bet) => bet.amount > 0 && !bet.isRedemption && !bet.isAnte
-    );
-
-    if (newBets.length === 0) {
-      console.log("No new bets found. Continuing");
-      continue;
-    }
-
-    const newestBet = newBets[0];
-    if (
-      newestBet.id === lastBetId ||
-      newestBet.userUsername === username // exclude own bets
-    )
-      continue;
-
-    console.log(
-      `Loaded bet:`,
-      newestBet.userUsername,
-      newestBet.outcome,
-      `M${newestBet.amount}`,
-      `${roundProb(lastProbability ?? NaN) * 100}% => ${
-        roundProb(newestBet.probAfter) * 100
-      }%`,
-      new Date().toLocaleTimeString()
-    );
-
-    if (lastProbability) {
-      const diff = newestBet.probAfter - lastProbability;
-
-      if (Math.abs(diff) >= PROB_THESHOLD) {
-        const outcome = diff > 0 ? "NO" : "YES";
-        const limitProb = roundProb(REVERSION_FACTOR * diff + lastProbability);
-
-        const resultBet = await placeBet({
-          contractId,
-          amount: BET_AMOUNT,
-          outcome,
-          limitProb,
-        });
-
-        console.log(
-          `Bet placed:`,
-          resultBet.outcome,
-          `M${Math.floor(resultBet.amount)}`,
-          `${roundProb(newestBet.probAfter) * 100}% => ${
-            roundProb(limitProb) * 100
-          }%\n`
-        );
-      }
-    }
-
-    lastBetId = newestBet.id;
-    lastProbability = newestBet.probAfter;
-  }
+//  while (true) {
+//    // poll every 15 seconds
+//    if (lastBetId !== undefined) await sleep(15 * 1000);
+//
+//    const loadedBets = await getBets({
+//      contractSlug: slug,
+//      limit: 5,
+//    });
+//
+//    // filter out limit orders, redemptions, and antes
+//    const newBets = loadedBets.filter(
+//      (bet) => bet.amount > 0 && !bet.isRedemption && !bet.isAnte
+//    );
+//
+//    if (newBets.length === 0) {
+//      console.log("No new bets found. Continuing");
+//      continue;
+//    }
+//
+//    const newestBet = newBets[0];
+//    if (
+//      newestBet.id === lastBetId ||
+//      newestBet.userUsername === username // exclude own bets
+//    )
+//      continue;
+//
+//    console.log(
+//      `Loaded bet:`,
+//      newestBet.userUsername,
+//      newestBet.outcome,
+//      `M${newestBet.amount}`,
+//      `${roundProb(lastProbability ?? NaN) * 100}% => ${
+//        roundProb(newestBet.probAfter) * 100
+//      }%`,
+//      new Date().toLocaleTimeString()
+//    );
+//
+//    if (lastProbability) {
+//      const diff = newestBet.probAfter - lastProbability;
+//
+//      if (Math.abs(diff) >= PROB_THESHOLD) {
+//        const outcome = diff > 0 ? "NO" : "YES";
+//        const limitProb = roundProb(REVERSION_FACTOR * diff + lastProbability);
+//
+//        const resultBet = await placeBet({
+//          contractId,
+//          amount: BET_AMOUNT,
+//          outcome,
+//          limitProb,
+//        });
+//
+//        console.log(
+//          `Bet placed:`,
+//          resultBet.outcome,
+//          `M${Math.floor(resultBet.amount)}`,
+//          `${roundProb(newestBet.probAfter) * 100}% => ${
+//            roundProb(limitProb) * 100
+//          }%\n`
+//        );
+//      }
+//    }
+//
+//    lastBetId = newestBet.id;
+//    lastProbability = newestBet.probAfter;
+//  }
 };
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const roundProb = (prob: number) => Math.round(prob * 100) / 100;
+//const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+//const roundProb = (prob: number) => Math.round(prob * 100) / 100;
+
+function filterOutIneligibleMarkets(markets: LiteMarket[]): LiteMarket[] {
+  const filteredMarkets = markets
+  .filter((market: LiteMarket) => !market.isResolved)
+  .filter((market: LiteMarket) => market.outcomeType == `BINARY`);
+  console.log(`Filtered down to ${filteredMarkets.length} markets`);
+  return filteredMarkets;
+}
+
+function toFullMarkets(markets: LiteMarket[]): FullMarket[] {
+  let fullMarkets = [];
+  let firstMarket = getFullMarket(markets[0].id);
+  fullMarkets.push(firstMarket);
+  return fullMarkets;
+}
 
 if (require.main === module) {
   main();
