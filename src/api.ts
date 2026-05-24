@@ -25,14 +25,21 @@ export const getAllMarkets = async () => {
   const allMarkets: LiteMarket[] = [];
   let before: string | undefined = undefined;
 
+  let retryCount = 0;
   while (true) {
-    const markets: LiteMarket[] = await getMarkets(1000, before);
+    let markets: LiteMarket[] = [];
+    try {
+      markets = await getMarkets(1000, before);
 
-    allMarkets.push(...markets);
-    before = markets[markets.length - 1].id;
-    console.log("Loaded", allMarkets.length, "markets", "before", before);
+      allMarkets.push(...markets);
+      before = markets[markets.length - 1].id;
+      console.log("Loaded", allMarkets.length, "markets", "before", before);
+    } catch (error) {
+      retryCount++;
+      console.error(error);
+    }
 
-    if (markets.length < 1000) break;
+    if (markets.length < 1000 && retryCount >= 2) break;
   }
 
   return allMarkets;
