@@ -37,6 +37,8 @@ const main = async () => {
   let filteredFullMarkets: FullMarket[] = fullMarkets.filter((market) => !containsIneligibleSlug(market));
   console.log(`There are ${filteredFullMarkets.length} full markets without inelligible slugs`);
 
+  filteredFullMarkets.forEach((market) => printFullMarket(market));
+
   //let fullMarkets: FullMarket[] = toFullMarkets(filteredMarkets);
 
   //let searchedMarkets: LiteMarket[] = await searchMarkets(`open`, `BINARY`, 1000);
@@ -164,6 +166,9 @@ function containsIneligibleSlug(market: FullMarket): boolean {
   return result
 }
 
+function printFullMarket(market: FullMarket): void {
+  console.log(`Question: ${market.question} | Probability: ${market.probability} | Created: ${new Date(market.createdTime)} | Close: ${new Date(market.closeTime)}`);
+}
 
 if (require.main === module) {
   main();
