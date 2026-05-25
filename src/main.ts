@@ -1,7 +1,7 @@
-import { getBets, getMarketBySlug, placeBet, searchMarkets, getAllMarkets, getFullMarket } from "./api";
+import { getUserBets, getAllMarkets, getFullMarket } from "./api";
 
 const BET_AMOUNT = 25;
-const PROB_THESHOLD = 0.02;
+const PROB_THESHOLD = 0.10;
 const REVERSION_FACTOR = 0.5;
 
 const main = async () => {
@@ -18,14 +18,22 @@ const main = async () => {
 
   console.log("Starting nothing-ever-happens trading bot...");
 
-  const market = await getMarketBySlug(slug);
-  console.log(`Loaded market: ${market.question}\n`);
-
   let allMarkets: LiteMarket[] = await getAllMarkets();
 
   console.log(`There are ${allMarkets.length} markets in total!`);
   let filteredMarkets: LiteMarket[] = filterOutIneligibleMarkets(allMarkets);
+  filteredMarkets = sortByVolume(filteredMarkets);
   console.log(`There are ${filteredMarkets.length} filtered markets`);
+
+  // Retrieve bets
+  let bets: Bet[] = await getUserBets(username);
+  console.log(`I have made ${bets.length} bets`);
+
+  let alreadyBetMarkets: LiteMarket[] = marketsIHaveAlreadyBetOn(filteredMarkets, bets);
+
+  console.log(`I have made bets on ${alreadyBetMarkets.length} markets that we have filtered`);
+
+  // Retrieve full markets
   let fullMarkets: FullMarket[] = [];
   //TODO: Need to respect 500/minute rate limit
   for(let i = 0; i < 400; i++) {
@@ -33,11 +41,14 @@ const main = async () => {
     console.log(`Retrieved full market ${i}`);
     fullMarkets.push(retrievedFullMarket);
   }
+
   console.log(`There are ${fullMarkets.length} full markets`);
   let filteredFullMarkets: FullMarket[] = fullMarkets.filter((market) => !containsIneligibleSlug(market));
   console.log(`There are ${filteredFullMarkets.length} full markets without inelligible slugs`);
 
-  filteredFullMarkets.forEach((market) => printFullMarket(market));
+
+
+  //filteredFullMarkets.forEach((market) => printFullMarket(market));
 
   //let fullMarkets: FullMarket[] = toFullMarkets(filteredMarkets);
 
@@ -140,15 +151,21 @@ const ineligibleGroupSlugs: string[] = [
   'road-bicycle-racing',
   'mlb',
   'uefa-champions-league',
-  'college-basketball'
+  'college-basketball',
+  'new-years-resolution-2024'
 ];
 
 function filterOutIneligibleMarkets(markets: LiteMarket[]): LiteMarket[] {
   const filteredMarkets = markets
   .filter((market: LiteMarket) => !market.isResolved)
-  .filter((market: LiteMarket) => market.outcomeType == `BINARY`);
+  .filter((market: LiteMarket) => market.outcomeType == `BINARY`)
+  .filter((market: LiteMarket) => market.probability >= .25 && market.probability <= .75);
   console.log(`Filtered down to ${filteredMarkets.length} markets`);
   return filteredMarkets;
+}
+
+function sortByVolume(markets: LiteMarket[]): LiteMarket[] {
+  return markets.sort((a: LiteMarket, b: LiteMarket) => b.volume - a.volume);
 }
 
 function toFullMarkets(markets: LiteMarket[]): FullMarket[] {
@@ -166,8 +183,13 @@ function containsIneligibleSlug(market: FullMarket): boolean {
   return result
 }
 
+function marketsIHaveAlreadyBetOn(markets: LiteMarket[], bets: Bet[]): LiteMarket[] {
+  let betContractIds: string[] = bets.map((bet: Bet) => bet.contractId);
+  return markets.filter((market: LiteMarket) => betContractIds.includes(market.id));
+}
+
 function printFullMarket(market: FullMarket): void {
-  console.log(`Question: ${market.question} | Probability: ${market.probability} | Created: ${new Date(market.createdTime)} | Close: ${new Date(market.closeTime)}`);
+  console.log(`Question: ${market.question} | Volume: ${market.volume} | Probability: ${market.probability} | Created: ${new Date(market.createdTime)} | Close: ${new Date(market.closeTime)}`);
 }
 
 if (require.main === module) {
