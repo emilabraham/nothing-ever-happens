@@ -1,9 +1,5 @@
 import { getUserBets, getAllMarkets, getFullMarket } from "./api";
 
-const BET_AMOUNT = 25;
-const PROB_THESHOLD = 0.10;
-const REVERSION_FACTOR = 0.5;
-
 const main = async () => {
   const username = process.env.MANIFOLD_USERNAME;
   const key = process.env.MANIFOLD_API_KEY;
@@ -35,90 +31,9 @@ const main = async () => {
   let alreadyBetMarkets: LiteMarket[] = marketsIHaveAlreadyBetOn(markets, bets);
 
   console.log(`I have made bets on ${alreadyBetMarkets.length} markets that we have filtered`);
-
-  //filteredFullMarkets.forEach((market) => printFullMarket(market));
-
-  //let fullMarkets: FullMarket[] = toFullMarkets(filteredMarkets);
-
-  //let searchedMarkets: LiteMarket[] = await searchMarkets(`open`, `BINARY`, 1000);
-  //console.log(`size of searched markets: ${searchedMarkets.length}`);
-  //let filteredSearchedMarkets =  searchedMarkets.filter((market) => !market.isResolved);
-  //console.log(`size of filtered markets: ${filteredSearchedMarkets.length}`);
-
-//  const contractId = market.id;
-//
-//  let lastBetId: string | undefined = undefined;
-//  let lastProbability: number | undefined = undefined;
-
-//  while (true) {
-//    // poll every 15 seconds
-//    if (lastBetId !== undefined) await sleep(15 * 1000);
-//
-//    const loadedBets = await getBets({
-//      contractSlug: slug,
-//      limit: 5,
-//    });
-//
-//    // filter out limit orders, redemptions, and antes
-//    const newBets = loadedBets.filter(
-//      (bet) => bet.amount > 0 && !bet.isRedemption && !bet.isAnte
-//    );
-//
-//    if (newBets.length === 0) {
-//      console.log("No new bets found. Continuing");
-//      continue;
-//    }
-//
-//    const newestBet = newBets[0];
-//    if (
-//      newestBet.id === lastBetId ||
-//      newestBet.userUsername === username // exclude own bets
-//    )
-//      continue;
-//
-//    console.log(
-//      `Loaded bet:`,
-//      newestBet.userUsername,
-//      newestBet.outcome,
-//      `M${newestBet.amount}`,
-//      `${roundProb(lastProbability ?? NaN) * 100}% => ${
-//        roundProb(newestBet.probAfter) * 100
-//      }%`,
-//      new Date().toLocaleTimeString()
-//    );
-//
-//    if (lastProbability) {
-//      const diff = newestBet.probAfter - lastProbability;
-//
-//      if (Math.abs(diff) >= PROB_THESHOLD) {
-//        const outcome = diff > 0 ? "NO" : "YES";
-//        const limitProb = roundProb(REVERSION_FACTOR * diff + lastProbability);
-//
-//        const resultBet = await placeBet({
-//          contractId,
-//          amount: BET_AMOUNT,
-//          outcome,
-//          limitProb,
-//        });
-//
-//        console.log(
-//          `Bet placed:`,
-//          resultBet.outcome,
-//          `M${Math.floor(resultBet.amount)}`,
-//          `${roundProb(newestBet.probAfter) * 100}% => ${
-//            roundProb(limitProb) * 100
-//          }%\n`
-//        );
-//      }
-//    }
-//
-//    lastBetId = newestBet.id;
-//    lastProbability = newestBet.probAfter;
-//  }
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-//const roundProb = (prob: number) => Math.round(prob * 100) / 100;
 
 const ineligibleGroupSlugs: string[] = [
   'sports-default',
@@ -164,42 +79,40 @@ function sortByVolume(markets: LiteMarket[]): LiteMarket[] {
   return markets.sort((a: LiteMarket, b: LiteMarket) => b.volume - a.volume);
 }
 
+/**
+ * Retrieve the fullmarket for each given lite market.
+ * Does it in batches of 400 every minute.
+ * There is an API rate limit of 500 requests per minute.
+ **/
 async function retrieveFullMarkets(markets: LiteMarket[]): Promise<FullMarket[]> {
-  // Retrieve full markets
   let fullMarkets: FullMarket[] = [];
   let marketCount = markets.length;
   let marketIndex = 0;
   while (marketIndex < marketCount) {
-    let batchMax = marketIndex + 400;
+
+    let batchMax = marketIndex + 400; //Grab in batches of 400 to avoid rate limit
     batchMax = batchMax >= marketCount ? marketCount : batchMax;
     let startTime = performance.now();
     console.log(`Handling batch with markets ${marketIndex} to ${batchMax}`);
+
     for (let step = marketIndex; step <= batchMax; step++) {
       let retrievedFullMarket: FullMarket = await getFullMarket(markets[step]?.id);
       fullMarkets.push(retrievedFullMarket);
       marketIndex = step;
     }
+
     let endTime = performance.now();
     let elapsedTime = (endTime-startTime)/1000
     console.log(`Batch completed in ${elapsedTime} seconds`);
+
+    //sleep for the remaining minute
     if (elapsedTime < 60) {
-      let sleepTimeMs: number = ((60-elapsedTime) * 1000); //sleep for the remaining minute
+      let sleepTimeMs: number = ((60-elapsedTime) * 1000);
       console.log(`Going to sleep for ${sleepTimeMs/1000} seconds`);
       sleep(sleepTimeMs);
     }
   }
-  console.log(`Made it out of the while loop`);
 
-  return fullMarkets;
-}
-
-function toFullMarkets(markets: LiteMarket[]): FullMarket[] {
-  let fullMarkets = [];
-  let marketCount = 0;
-  fullMarkets = markets.map(async (market: LiteMarket) => {
-    console.log(`Retrieving full market data for market ${marketCount++}`);
-    return await getFullMarket(market.id)
-  });
   return fullMarkets;
 }
 
@@ -214,7 +127,11 @@ function marketsIHaveAlreadyBetOn(markets: LiteMarket[], bets: Bet[]): LiteMarke
 }
 
 function printFullMarket(market: FullMarket): void {
-  console.log(`Question: ${market.question} | Volume: ${market.volume} | Probability: ${market.probability} | Created: ${new Date(market.createdTime)} | Close: ${new Date(market.closeTime)}`);
+  console.log(`Question: ${market.question} |
+              Volume: ${market.volume} |
+              Probability: ${market.probability} |
+              Created: ${new Date(market.createdTime)} |
+              Close: ${new Date(market.closeTime)}`);
 }
 
 if (require.main === module) {
