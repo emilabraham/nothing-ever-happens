@@ -7,7 +7,7 @@ const API_URL = "https://manifold.markets/api/v0";
 export const getFullMarket = async (id: string) => {
   const market: FullMarket = await fetch(`${API_URL}/market/${id}`).then(
     (res) => res.json()
-  );
+  ).catch((e) => console.log(`Failed to retrieve fullmarket ${id}`, e))
   return market;
 };
 
