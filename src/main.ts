@@ -34,9 +34,12 @@ const main = async () => {
 
   filteredFullMarkets.concat(smallSampleFullMarketsFromBets);
 
-  categorizeMarkets(filteredFullMarkets, bets);
-  let alreadyBetMarkets: LiteMarket[] = marketsIHaveAlreadyBetOn(markets, bets);
-  alreadyBetMarkets = sortByVolume(alreadyBetMarkets);
+  let bettableMarkets: CategorizedMarkets = categorizeMarkets(filteredFullMarkets, bets);
+
+  bettableMarkets.highPriorityMarkets.forEach((fullMarket) => {
+    printLiteMarket(fullMarket.market);
+    console.log(`This market had a ${fullMarket.probabilityChange} probability change since you last bet`);
+  })
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -144,17 +147,22 @@ function marketsIHaveAlreadyBetOn(markets: LiteMarket[], bets: Bet[]): LiteMarke
   return markets.filter((market: LiteMarket) => betContractIds.includes(market?.id));
 }
 
-function categorizeMarkets(markets: FullMarket[], bets: Bet[]) {
+function categorizeMarkets(markets: FullMarket[], bets: Bet[]): CategorizedMarkets {
   let marketIdsWithBets: string[] = marketsIHaveAlreadyBetOn(markets, bets)
   .map((market) => market?.id);
 
-  let highPriorityMarkets = markets.filter((market) => marketIdsWithBets.includes(market?.id))
-  .filter((market) => market?.probability - getLastBetProbabilityForMarket(market?.id, bets) >= PROBABILITY_THRESHOLD);
-  printLiteMarkets(highPriorityMarkets);
-  debugger;
+  let highPriorityMarkets: FullMarketProbabilityChange[] = markets.filter((market) => marketIdsWithBets.includes(market?.id))
+  .filter((market) => market?.probability - getLastBetProbabilityForMarket(market?.id, bets) >= PROBABILITY_THRESHOLD)
+  .map((market) => { return {
+    market: market,
+    probabilityChange: market?.probability - getLastBetProbabilityForMarket(market?.id, bets)
+  }});
+
   let normalPriorityMarkets = markets.filter((market) => !marketIdsWithBets.includes(market?.id))
+
   let skippableMarkets = markets.filter((market) => marketIdsWithBets.includes(market?.id))
   .filter((market) => getLastBetProbabilityForMarket(market?.id, bets) - market?.probability >= PROBABILITY_THRESHOLD);
+  return { highPriorityMarkets, normalPriorityMarkets }
 }
 
 function getLastBetProbabilityForMarket(marketId: string, bets: Bet[]): number {

@@ -89,6 +89,16 @@ type FullMarket = LiteMarket & {
   groupSlugs?: string[] // topics tagged in this market
 }
 
+type FullMarketProbabilityChange = {
+  market: FullMarket
+  probabilityChange: number
+}
+
+type CategorizedMarkets = {
+  highPriorityMarkets: FullMarketProbabilityChange[]
+  normalPriorityMarkets: FullMarket[]
+}
+
 // A complete market, along with bets, comments, and answers (for free response markets)
 //type FullMarket = LiteMarket & {
 //  bets: Bet[];
