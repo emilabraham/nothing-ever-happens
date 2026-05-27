@@ -1,5 +1,7 @@
 import { getUserBets, getAllMarkets, getFullMarket } from "./api";
 
+const PROBABILITY_THRESHOLD: number = 0.10;
+
 const main = async () => {
   const username = process.env.MANIFOLD_USERNAME;
   const key = process.env.MANIFOLD_API_KEY;
@@ -26,11 +28,15 @@ const main = async () => {
 
   // Retrieve bets
   let bets: Bet[] = await getUserBets(username);
-  console.log(`I have made ${bets.length} bets`);
+  let marketsFromBets = bets.map((bet) => bet.contractId);
+  console.log(`Retrieving full markets for small sample of markets that I have already bet on.`);
+  let smallSampleFullMarketsFromBets: FullMarket[] = await retrieveSmallSampleFullMarkets(marketsFromBets);
 
+  filteredFullMarkets.concat(smallSampleFullMarketsFromBets);
+
+  categorizeMarkets(filteredFullMarkets, bets);
   let alreadyBetMarkets: LiteMarket[] = marketsIHaveAlreadyBetOn(markets, bets);
-
-  console.log(`I have made bets on ${alreadyBetMarkets.length} markets that we have filtered`);
+  alreadyBetMarkets = sortByVolume(alreadyBetMarkets);
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -86,7 +92,8 @@ function sortByVolume(markets: LiteMarket[]): LiteMarket[] {
  **/
 async function retrieveFullMarkets(markets: LiteMarket[]): Promise<FullMarket[]> {
   let fullMarkets: FullMarket[] = [];
-  let marketCount = markets.length;
+  //let marketCount = markets.length;
+  let marketCount = 800;
   let marketIndex = 0;
   while (marketIndex < marketCount) {
 
@@ -116,6 +123,17 @@ async function retrieveFullMarkets(markets: LiteMarket[]): Promise<FullMarket[]>
   return fullMarkets;
 }
 
+//TODO: Smaller sample set for testing. Should remove after testing.
+async function retrieveSmallSampleFullMarkets(marketIds: string[]): Promise<FullMarket[]> {
+  let smallSampleFullMarkets: FullMarket[] = [];
+  for (let i = 0; i < 400; i++) {
+    let retrievedFullMarket: FullMarket = await getFullMarket(marketIds[i]);
+    smallSampleFullMarkets.push(retrievedFullMarket);
+  }
+
+  return smallSampleFullMarkets;
+}
+
 function containsIneligibleSlug(market: FullMarket): boolean {
   let result: boolean = ineligibleGroupSlugs.some(slug => market?.groupSlugs?.includes(slug));
   return result
@@ -123,15 +141,38 @@ function containsIneligibleSlug(market: FullMarket): boolean {
 
 function marketsIHaveAlreadyBetOn(markets: LiteMarket[], bets: Bet[]): LiteMarket[] {
   let betContractIds: string[] = bets.map((bet: Bet) => bet.contractId);
-  return markets.filter((market: LiteMarket) => betContractIds.includes(market.id));
+  return markets.filter((market: LiteMarket) => betContractIds.includes(market?.id));
 }
 
-function printFullMarket(market: FullMarket): void {
+function categorizeMarkets(markets: FullMarket[], bets: Bet[]) {
+  let marketIdsWithBets: string[] = marketsIHaveAlreadyBetOn(markets, bets)
+  .map((market) => market?.id);
+
+  let highPriorityMarkets = markets.filter((market) => marketIdsWithBets.includes(market?.id))
+  .filter((market) => market?.probability - getLastBetProbabilityForMarket(market?.id, bets) >= PROBABILITY_THRESHOLD);
+  printLiteMarkets(highPriorityMarkets);
+  debugger;
+  let normalPriorityMarkets = markets.filter((market) => !marketIdsWithBets.includes(market?.id))
+  let skippableMarkets = markets.filter((market) => marketIdsWithBets.includes(market?.id))
+  .filter((market) => getLastBetProbabilityForMarket(market?.id, bets) - market?.probability >= PROBABILITY_THRESHOLD);
+}
+
+function getLastBetProbabilityForMarket(marketId: string, bets: Bet[]): number {
+  let betsForMarketOrdered = bets.filter((bet) => bet.contractId == marketId)
+  .sort((a, b) => b.createdTime - a.createdTime);
+  return betsForMarketOrdered[0]?.probAfter;
+}
+
+function printLiteMarket(market: LiteMarket): void {
   console.log(`Question: ${market.question} |
               Volume: ${market.volume} |
               Probability: ${market.probability} |
               Created: ${new Date(market.createdTime)} |
               Close: ${new Date(market.closeTime)}`);
+}
+
+function printLiteMarkets(markets: LiteMarket[]): void {
+  markets.forEach((market) => printLiteMarket(market));
 }
 
 if (require.main === module) {
