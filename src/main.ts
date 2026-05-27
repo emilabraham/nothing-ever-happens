@@ -25,28 +25,49 @@ const main = async () => {
   filteredMarkets = sortByVolume(filteredMarkets);
   console.log(`There are ${filteredMarkets.length} filtered markets`);
 
-  // Retrieve bets
-  let bets: Bet[] = await getUserBets(username);
-  console.log(`I have made ${bets.length} bets`);
-
-  let alreadyBetMarkets: LiteMarket[] = marketsIHaveAlreadyBetOn(filteredMarkets, bets);
-
-  console.log(`I have made bets on ${alreadyBetMarkets.length} markets that we have filtered`);
-
   // Retrieve full markets
   let fullMarkets: FullMarket[] = [];
   //TODO: Need to respect 500/minute rate limit
-  for(let i = 0; i < 400; i++) {
-    let retrievedFullMarket: FullMarket = await getFullMarket(filteredMarkets[i].id);
-    console.log(`Retrieved full market ${i}`);
-    fullMarkets.push(retrievedFullMarket);
+  let marketCount = filteredMarkets.length;
+  let marketIndex = 0;
+  while (marketIndex < marketCount) {
+    let batchMax = marketIndex + 400;
+    batchMax = batchMax >= marketCount ? marketCount : batchMax;
+    let startTime = performance.now();
+    console.log(`Handling batch with markets ${marketIndex} to ${batchMax}`);
+    for (let step = marketIndex; step <= batchMax; step++) {
+      let retrievedFullMarket: FullMarket = await getFullMarket(filteredMarkets[step]?.id);
+      fullMarkets.push(retrievedFullMarket);
+      marketIndex = step;
+    }
+    let endTime = performance.now();
+    let elapsedTime = (endTime-startTime)/1000
+    console.log(`Batch completed in ${elapsedTime} seconds`);
+    if (elapsedTime < 60) {
+      let sleepTimeMs: number = ((60-elapsedTime) * 1000); //sleep for the remaining minute
+      console.log(`Going to sleep for ${sleepTimeMs/1000} seconds`);
+      sleep(sleepTimeMs);
+    }
   }
+  console.log(`Made it out of the while loop`);
+  //for(let i = 0; i < 400; i++) {
+  //  let retrievedFullMarket: FullMarket = await getFullMarket(filteredMarkets[i].id);
+  //  console.log(`Retrieved full market ${i}`);
+  //  fullMarkets.push(retrievedFullMarket);
+  //}
 
   console.log(`There are ${fullMarkets.length} full markets`);
   let filteredFullMarkets: FullMarket[] = fullMarkets.filter((market) => !containsIneligibleSlug(market));
   console.log(`There are ${filteredFullMarkets.length} full markets without inelligible slugs`);
 
+  // Retrieve bets
+  let bets: Bet[] = await getUserBets(username);
+  console.log(`I have made ${bets.length} bets`);
 
+  //TODO: Should we change this to using the filtered full markets?
+  let alreadyBetMarkets: LiteMarket[] = marketsIHaveAlreadyBetOn(filteredMarkets, bets);
+
+  console.log(`I have made bets on ${alreadyBetMarkets.length} markets that we have filtered`);
 
   //filteredFullMarkets.forEach((market) => printFullMarket(market));
 
@@ -129,7 +150,7 @@ const main = async () => {
 //  }
 };
 
-//const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 //const roundProb = (prob: number) => Math.round(prob * 100) / 100;
 
 const ineligibleGroupSlugs: string[] = [
@@ -179,7 +200,7 @@ function toFullMarkets(markets: LiteMarket[]): FullMarket[] {
 }
 
 function containsIneligibleSlug(market: FullMarket): boolean {
-  let result: boolean = ineligibleGroupSlugs.some(slug => market.groupSlugs?.includes(slug));
+  let result: boolean = ineligibleGroupSlugs.some(slug => market?.groupSlugs?.includes(slug));
   return result
 }
 
