@@ -4,6 +4,14 @@ const yourKey = process.env.MANIFOLD_API_KEY;
 
 const API_URL = "https://manifold.markets/api/v0";
 
+//These are errors we've seen during standard operation.
+//Most are related to very old markets from early development that have a different structure.
+//We can safely skip them. No need to log them out either.
+const skippableErrors: string[] = [
+  `Cannot read properties of undefined (reading 'id')`,
+  `Unexpected token 'u', "upstream c"... is not valid JSON`
+]
+
 export const getFullMarket = async (id: string) => {
   const market: FullMarket = await fetch(`${API_URL}/market/${id}`).then(
     (res) => res.json()
@@ -26,6 +34,7 @@ export const getAllMarkets = async () => {
   let before: string | undefined = undefined;
 
   let retryCount = 0;
+  console.log(`Loading all markets...`);
   while (true) {
     let markets: LiteMarket[] = [];
     try {
@@ -33,15 +42,19 @@ export const getAllMarkets = async () => {
 
       allMarkets.push(...markets);
       before = markets[markets.length - 1].id;
-      console.log("Loaded", allMarkets.length, "markets", "before", before);
     } catch (error) {
+      if (skippableErrors.includes(error.message)) {
+        console.log(`Standard error. Moving on.`);
+      } else {
+        console.error(error);
+      }
       retryCount++;
-      console.error(error);
     }
 
     if (markets.length < 1000 && retryCount >= 2) break;
   }
 
+  console.log(`Loaded ${allMarkets.length} markets`);
   return allMarkets;
 };
 
