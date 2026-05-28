@@ -15,7 +15,14 @@ const skippableErrors: string[] = [
 export const getFullMarket = async (id: string) => {
   const market: FullMarket = await fetch(`${API_URL}/market/${id}`).then(
     (res) => res.json()
-  ).catch((e) => console.log(`Failed to retrieve fullmarket ${id}`, e))
+  ).catch((error) => {
+    if (skippableErrors.includes(error.message)) {
+      console.log(`Standard error. Moving on.`);
+    } else {
+      console.error(error);
+    }
+  });
+
   return market;
 };
 

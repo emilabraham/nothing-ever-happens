@@ -20,18 +20,22 @@ const main = async () => {
 
   markets = filterAndSortLightMarkets(markets);
 
+  console.log(`There are ${markets.length} markets remaining`);
+
   let fullMarkets: FullMarket[] = await retrieveFullMarkets(markets);
 
-  console.log(`There are ${fullMarkets.length} full markets`);
+  console.log(`Filtering out markets with inelligible slugs`);
   let filteredFullMarkets: FullMarket[] = fullMarkets.filter((market) => !containsIneligibleSlug(market));
-  console.log(`There are ${filteredFullMarkets.length} full markets without inelligible slugs`);
+  console.log(`There are ${filteredFullMarkets.length} full markets left`);
 
   // Retrieve bets
   let bets: Bet[] = await getUserBets(username);
+
+  //For testing, we are making sure to include markets that I have bet on.
+  //TODO: Remove this chunk when we are ready to deploy
   let marketsFromBets = bets.map((bet) => bet.contractId);
   console.log(`Retrieving full markets for small sample of markets that I have already bet on.`);
   let smallSampleFullMarketsFromBets: FullMarket[] = await retrieveSmallSampleFullMarkets(marketsFromBets);
-
   filteredFullMarkets.concat(smallSampleFullMarketsFromBets);
 
   let bettableMarkets: CategorizedMarkets = categorizeMarkets(filteredFullMarkets, bets);
@@ -68,23 +72,22 @@ const ineligibleGroupSlugs: string[] = [
 ];
 
 function filterAndSortLightMarkets(markets: LiteMarket[]): LiteMarket[] {
-  console.log(`There are ${markets.length} markets in total!`);
   markets = filterOutIneligibleMarkets(markets);
   markets = sortByVolume(markets);
-  console.log(`There are ${markets.length} filtered markets`);
   return markets;
 }
 
 function filterOutIneligibleMarkets(markets: LiteMarket[]): LiteMarket[] {
+  console.log(`Filtering out irrelevant markets...`);
   const filteredMarkets = markets
   .filter((market: LiteMarket) => !market.isResolved)
   .filter((market: LiteMarket) => market.outcomeType == `BINARY`)
   .filter((market: LiteMarket) => market.probability >= .25 && market.probability <= .75);
-  console.log(`Filtered down to ${filteredMarkets.length} markets`);
   return filteredMarkets;
 }
 
 function sortByVolume(markets: LiteMarket[]): LiteMarket[] {
+  console.log(`Sorting markets by volume...`);
   return markets.sort((a: LiteMarket, b: LiteMarket) => b.volume - a.volume);
 }
 
@@ -94,7 +97,9 @@ function sortByVolume(markets: LiteMarket[]): LiteMarket[] {
  * There is an API rate limit of 500 requests per minute.
  **/
 async function retrieveFullMarkets(markets: LiteMarket[]): Promise<FullMarket[]> {
+  console.log(`Retrieving full market data for ${markets.length} markets...`);
   let fullMarkets: FullMarket[] = [];
+  //TODO: Temporary to speed up testing. Remove when ready to deploy
   //let marketCount = markets.length;
   let marketCount = 800;
   let marketIndex = 0;
@@ -103,7 +108,7 @@ async function retrieveFullMarkets(markets: LiteMarket[]): Promise<FullMarket[]>
     let batchMax = marketIndex + 400; //Grab in batches of 400 to avoid rate limit
     batchMax = batchMax >= marketCount ? marketCount : batchMax;
     let startTime = performance.now();
-    console.log(`Handling batch with markets ${marketIndex} to ${batchMax}`);
+    console.log(`Retrieving markets ${marketIndex} to ${batchMax}`);
 
     for (let step = marketIndex; step <= batchMax; step++) {
       let retrievedFullMarket: FullMarket = await getFullMarket(markets[step]?.id);
@@ -113,12 +118,12 @@ async function retrieveFullMarkets(markets: LiteMarket[]): Promise<FullMarket[]>
 
     let endTime = performance.now();
     let elapsedTime = (endTime-startTime)/1000
-    console.log(`Batch completed in ${elapsedTime} seconds`);
+    console.log(`Batch completed in ${elapsedTime.toFixed(2)} seconds`);
 
     //sleep for the remaining minute
     if (elapsedTime < 60) {
       let sleepTimeMs: number = ((60-elapsedTime) * 1000);
-      console.log(`Going to sleep for ${sleepTimeMs/1000} seconds`);
+      console.log(`Going to sleep for ${(sleepTimeMs/1000).toFixed(2)} seconds`);
       sleep(sleepTimeMs);
     }
   }
@@ -151,6 +156,8 @@ function categorizeMarkets(markets: FullMarket[], bets: Bet[]): CategorizedMarke
   let marketIdsWithBets: string[] = marketsIHaveAlreadyBetOn(markets, bets)
   .map((market) => market?.id);
 
+  //High Priority markets are ones that I have already bet on that have had their probability shift away from our initial direction.
+  //This means there is more opportunity to dig deeper into our strategy.
   let highPriorityMarkets: FullMarketProbabilityChange[] = markets.filter((market) => marketIdsWithBets.includes(market?.id))
   .filter((market) => market?.probability - getLastBetProbabilityForMarket(market?.id, bets) >= PROBABILITY_THRESHOLD)
   .map((market) => { return {
@@ -158,10 +165,9 @@ function categorizeMarkets(markets: FullMarket[], bets: Bet[]): CategorizedMarke
     probabilityChange: market?.probability - getLastBetProbabilityForMarket(market?.id, bets)
   }});
 
+  //Normal Priority markets are ones that I have not bet on yet.
   let normalPriorityMarkets = markets.filter((market) => !marketIdsWithBets.includes(market?.id))
 
-  let skippableMarkets = markets.filter((market) => marketIdsWithBets.includes(market?.id))
-  .filter((market) => getLastBetProbabilityForMarket(market?.id, bets) - market?.probability >= PROBABILITY_THRESHOLD);
   return { highPriorityMarkets, normalPriorityMarkets }
 }
 
