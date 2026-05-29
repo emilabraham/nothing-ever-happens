@@ -1,7 +1,7 @@
 # nothing-ever-happens
 Simple trading bot using Manifold API.
 
-The strategy implemented here polls for binary markets that predict something exciting will happen.
+The strategy implemented here polls for binary markets that predict something interesting will happen.
 It bets against that. It bets that status quo will remain.
 
 It specifically avoids sports markets since those typically always have a winner. So there can never be a status quo.
@@ -18,6 +18,7 @@ It specifically avoids sports markets since those typically always have a winner
    MANIFOLD_MARKET_SLUG=slug-for-market
    ```
 
+4. Create a `bot.log` file in the root directory of this repo to store logs
 4. Install npm packages with `yarn`
 5. Run `yarn start`
 
