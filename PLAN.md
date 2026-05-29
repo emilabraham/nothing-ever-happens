@@ -89,3 +89,92 @@ The `+0.02` offset means: "I'll buy NO if the price reaches 2 points above where
 2. Confirm the printed markets are within the 0.25–0.75 probability range and sorted by volume
 3. Uncomment `placeBet` and run for real with `MAX_BETS = 1` to confirm a single bet lands on the Manifold dashboard
 4. Scale up `MAX_BETS` gradually
+
+---
+
+## Deployment: Running as a Background Process (Every 8 Hours)
+
+Use systemd (timer + service) for boot resilience and automatic restarts.
+
+### Step 1 — Create the service unit
+
+```bash
+sudo nano /etc/systemd/system/nothing-ever-happens.service
+```
+
+```ini
+[Unit]
+Description=Nothing Ever Happens trading bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=emil
+WorkingDirectory=/home/emil/Projects/nothing-ever-happens
+ExecStart=/usr/bin/yarn start
+EnvironmentFile=/home/emil/Projects/nothing-ever-happens/.env
+Restart=on-failure
+RestartSec=60
+StandardOutput=append:/home/emil/Projects/nothing-ever-happens/bot.log
+StandardError=append:/home/emil/Projects/nothing-ever-happens/bot.log
+```
+
+### Step 2 — Create the timer unit
+
+```bash
+sudo nano /etc/systemd/system/nothing-ever-happens.timer
+```
+
+```ini
+[Unit]
+Description=Run nothing-ever-happens every 8 hours
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=8h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+`OnBootSec=2min` gives the network a moment to come up before the first post-reboot run. `Persistent=true` means if the system was off when a run was due, it fires as soon as it boots back up.
+
+### Step 3 — Find the yarn binary path
+
+```bash
+which yarn
+```
+
+If it differs from `/usr/bin/yarn`, update `ExecStart` in the service unit.
+
+### Step 4 — Enable and start
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now nothing-ever-happens.timer
+```
+
+### Step 5 — Verify
+
+```bash
+systemctl status nothing-ever-happens.timer   # should show "active (waiting)"
+systemctl list-timers nothing-ever-happens.*  # shows next scheduled run
+```
+
+### Useful commands
+
+```bash
+# Trigger a manual run immediately
+sudo systemctl start nothing-ever-happens.service
+
+# Watch logs live
+tail -f /home/emil/Projects/nothing-ever-happens/bot.log
+
+# Check run history
+journalctl -u nothing-ever-happens.service --since today
+
+# Stop/disable the timer
+sudo systemctl disable --now nothing-ever-happens.timer
+```
