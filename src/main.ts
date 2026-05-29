@@ -30,13 +30,6 @@ const main = async () => {
   // Retrieve bets
   let bets: Bet[] = await getUserBets(username);
 
-  //For testing, we are making sure to include markets that I have bet on.
-  //TODO: Remove this chunk when we are ready to deploy
-  let marketsFromBets = bets.map((bet) => bet.contractId);
-  log(`Retrieving full markets for small sample of markets that I have already bet on.`);
-  let smallSampleFullMarketsFromBets: FullMarket[] = await retrieveSmallSampleFullMarkets(marketsFromBets);
-  filteredFullMarkets.concat(smallSampleFullMarketsFromBets);
-
   let bettableMarkets: CategorizedMarkets = categorizeMarkets(filteredFullMarkets, bets);
 
   await placeLimitBet(bettableMarkets);
@@ -117,9 +110,7 @@ function sortByVolume(markets: LiteMarket[]): LiteMarket[] {
 async function retrieveFullMarkets(markets: LiteMarket[]): Promise<FullMarket[]> {
   log(`Retrieving full market data for ${markets.length} markets...`);
   let fullMarkets: FullMarket[] = [];
-  //TODO: Temporary to speed up testing. Remove when ready to deploy
-  //let marketCount = markets.length;
-  let marketCount = 800;
+  let marketCount = markets.length;
   let marketIndex = 0;
   while (marketIndex < marketCount) {
 
@@ -147,17 +138,6 @@ async function retrieveFullMarkets(markets: LiteMarket[]): Promise<FullMarket[]>
   }
 
   return fullMarkets;
-}
-
-//TODO: Smaller sample set for testing. Should remove after testing.
-async function retrieveSmallSampleFullMarkets(marketIds: string[]): Promise<FullMarket[]> {
-  let smallSampleFullMarkets: FullMarket[] = [];
-  for (let i = 0; i < 400; i++) {
-    let retrievedFullMarket: FullMarket = await getFullMarket(marketIds[i]);
-    smallSampleFullMarkets.push(retrievedFullMarket);
-  }
-
-  return smallSampleFullMarkets;
 }
 
 function containsIneligibleSlug(market: FullMarket): boolean {
