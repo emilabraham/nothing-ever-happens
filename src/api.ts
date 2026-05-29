@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { log, logError } from "./logger";
 
 const yourKey = process.env.MANIFOLD_API_KEY;
 
@@ -17,9 +18,9 @@ export const getFullMarket = async (id: string) => {
     (res) => res.json()
   ).catch((error) => {
     if (skippableErrors.includes(error.message)) {
-      console.log(`Standard error. Moving on.`);
+      log(`Standard error. Moving on.`);
     } else {
-      console.error(error);
+      logError(error);
     }
   });
 
@@ -41,7 +42,7 @@ export const getAllMarkets = async () => {
   let before: string | undefined = undefined;
 
   let retryCount = 0;
-  console.log(`Loading all markets...`);
+  log(`Loading all markets...`);
   while (true) {
     let markets: LiteMarket[] = [];
     try {
@@ -51,9 +52,9 @@ export const getAllMarkets = async () => {
       before = markets[markets.length - 1].id;
     } catch (error) {
       if (skippableErrors.includes(error.message)) {
-        console.log(`Standard error. Moving on.`);
+        log(`Standard error. Moving on.`);
       } else {
-        console.error(error);
+        logError(error);
       }
       retryCount++;
     }
@@ -61,7 +62,7 @@ export const getAllMarkets = async () => {
     if (markets.length < 1000 && retryCount >= 2) break;
   }
 
-  console.log(`Loaded ${allMarkets.length} markets`);
+  log(`Loaded ${allMarkets.length} markets`);
   return allMarkets;
 };
 

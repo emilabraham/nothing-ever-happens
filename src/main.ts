@@ -1,4 +1,5 @@
 import { getUserBets, getAllMarkets, getFullMarket, placeBet } from "./api";
+import { log } from "./logger";
 
 const PROBABILITY_THRESHOLD: number = 0.10;
 const BET_AMOUNT: number = 5;
@@ -15,19 +16,19 @@ const main = async () => {
   if (!slug)
     throw new Error("Please set MANIFOLD_MARKET_SLUG variable in .env file.");
 
-  console.log("Starting nothing-ever-happens trading bot...");
+  log("Starting nothing-ever-happens trading bot...");
 
   let markets: LiteMarket[] = await getAllMarkets();
 
   markets = filterAndSortLightMarkets(markets);
 
-  console.log(`There are ${markets.length} markets remaining`);
+  log(`There are ${markets.length} markets remaining`);
 
   let fullMarkets: FullMarket[] = await retrieveFullMarkets(markets);
 
-  console.log(`Filtering out markets with inelligible slugs`);
+  log(`Filtering out markets with inelligible slugs`);
   let filteredFullMarkets: FullMarket[] = fullMarkets.filter((market) => !containsIneligibleSlug(market));
-  console.log(`There are ${filteredFullMarkets.length} full markets left`);
+  log(`There are ${filteredFullMarkets.length} full markets left`);
 
   // Retrieve bets
   let bets: Bet[] = await getUserBets(username);
@@ -35,7 +36,7 @@ const main = async () => {
   //For testing, we are making sure to include markets that I have bet on.
   //TODO: Remove this chunk when we are ready to deploy
   let marketsFromBets = bets.map((bet) => bet.contractId);
-  console.log(`Retrieving full markets for small sample of markets that I have already bet on.`);
+  log(`Retrieving full markets for small sample of markets that I have already bet on.`);
   let smallSampleFullMarketsFromBets: FullMarket[] = await retrieveSmallSampleFullMarkets(marketsFromBets);
   filteredFullMarkets.concat(smallSampleFullMarketsFromBets);
 
@@ -87,7 +88,7 @@ async function placeLimitBet(markets: CategorizedMarkets): Promise<void> {
       outcome: 'NO',
       limitProb: limitProbability
     });
-    console.log(`Placed a bet on ${market?.question}`);
+    log(`Placed a bet on ${market?.question}`);
   }
 }
 
@@ -98,7 +99,7 @@ function filterAndSortLightMarkets(markets: LiteMarket[]): LiteMarket[] {
 }
 
 function filterOutIneligibleMarkets(markets: LiteMarket[]): LiteMarket[] {
-  console.log(`Filtering out irrelevant markets...`);
+  log(`Filtering out irrelevant markets...`);
   const filteredMarkets = markets
   .filter((market: LiteMarket) => !market.isResolved)
   .filter((market: LiteMarket) => market.outcomeType == `BINARY`)
@@ -107,7 +108,7 @@ function filterOutIneligibleMarkets(markets: LiteMarket[]): LiteMarket[] {
 }
 
 function sortByVolume(markets: LiteMarket[]): LiteMarket[] {
-  console.log(`Sorting markets by volume...`);
+  log(`Sorting markets by volume...`);
   return markets.sort((a: LiteMarket, b: LiteMarket) => b.volume - a.volume);
 }
 
@@ -117,7 +118,7 @@ function sortByVolume(markets: LiteMarket[]): LiteMarket[] {
  * There is an API rate limit of 500 requests per minute.
  **/
 async function retrieveFullMarkets(markets: LiteMarket[]): Promise<FullMarket[]> {
-  console.log(`Retrieving full market data for ${markets.length} markets...`);
+  log(`Retrieving full market data for ${markets.length} markets...`);
   let fullMarkets: FullMarket[] = [];
   //TODO: Temporary to speed up testing. Remove when ready to deploy
   //let marketCount = markets.length;
@@ -128,7 +129,7 @@ async function retrieveFullMarkets(markets: LiteMarket[]): Promise<FullMarket[]>
     let batchMax = marketIndex + 400; //Grab in batches of 400 to avoid rate limit
     batchMax = batchMax >= marketCount ? marketCount : batchMax;
     let startTime = performance.now();
-    console.log(`Retrieving markets ${marketIndex} to ${batchMax}`);
+    log(`Retrieving markets ${marketIndex} to ${batchMax}`);
 
     for (let step = marketIndex; step <= batchMax; step++) {
       let retrievedFullMarket: FullMarket = await getFullMarket(markets[step]?.id);
@@ -138,12 +139,12 @@ async function retrieveFullMarkets(markets: LiteMarket[]): Promise<FullMarket[]>
 
     let endTime = performance.now();
     let elapsedTime = (endTime-startTime)/1000
-    console.log(`Batch completed in ${elapsedTime.toFixed(2)} seconds`);
+    log(`Batch completed in ${elapsedTime.toFixed(2)} seconds`);
 
     //sleep for the remaining minute
     if (elapsedTime < 60) {
       let sleepTimeMs: number = ((60-elapsedTime) * 1000);
-      console.log(`Going to sleep for ${(sleepTimeMs/1000).toFixed(2)} seconds`);
+      log(`Going to sleep for ${(sleepTimeMs/1000).toFixed(2)} seconds`);
       sleep(sleepTimeMs);
     }
   }
@@ -198,11 +199,7 @@ function getLastBetProbabilityForMarket(marketId: string, bets: Bet[]): number {
 }
 
 function printLiteMarket(market: LiteMarket): void {
-  console.log(`Question: ${market.question} |
-              Volume: ${market.volume} |
-              Probability: ${market.probability} |
-              Created: ${new Date(market.createdTime)} |
-              Close: ${new Date(market.closeTime)}`);
+  log(`Question: ${market.question} | Volume: ${market.volume} | Probability: ${market.probability} | Created: ${new Date(market.createdTime)} | Close: ${new Date(market.closeTime)}`);
 }
 
 function printLiteMarkets(markets: LiteMarket[]): void {
