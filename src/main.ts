@@ -1,6 +1,7 @@
-import { getUserBets, getAllMarkets, getFullMarket } from "./api";
+import { getUserBets, getAllMarkets, getFullMarket, placeBet } from "./api";
 
 const PROBABILITY_THRESHOLD: number = 0.10;
+const BET_AMOUNT: number = 5;
 
 const main = async () => {
   const username = process.env.MANIFOLD_USERNAME;
@@ -40,10 +41,7 @@ const main = async () => {
 
   let bettableMarkets: CategorizedMarkets = categorizeMarkets(filteredFullMarkets, bets);
 
-  bettableMarkets.highPriorityMarkets.forEach((fullMarket) => {
-    printLiteMarket(fullMarket.market);
-    console.log(`This market had a ${fullMarket.probabilityChange} probability change since you last bet`);
-  })
+  await placeLimitBet(bettableMarkets);
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -70,6 +68,28 @@ const ineligibleGroupSlugs: string[] = [
   'college-basketball',
   'new-years-resolution-2024'
 ];
+
+async function placeLimitBet(markets: CategorizedMarkets): Promise<void> {
+  let market: FullMarket = null;
+  let limitProbability: number = 0;
+
+  if (markets?.highPriorityMarkets?.length != 0) {
+    market = markets.highPriorityMarkets[0].market;
+  } else if (markets?.normalPriorityMarkets?.length != 0) {
+    market = markets.normalPriorityMarkets[0];
+  }
+
+  if (market != null) {
+    limitProbability = Math.round((market.probability + .02) * 100)/100;
+    await placeBet({
+      contractId: market?.id,
+      amount: BET_AMOUNT,
+      outcome: 'NO',
+      limitProb: limitProbability
+    });
+    console.log(`Placed a bet on ${market?.question}`);
+  }
+}
 
 function filterAndSortLightMarkets(markets: LiteMarket[]): LiteMarket[] {
   markets = filterOutIneligibleMarkets(markets);

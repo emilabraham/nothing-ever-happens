@@ -2,7 +2,7 @@ import "dotenv/config";
 
 const yourKey = process.env.MANIFOLD_API_KEY;
 
-const API_URL = "https://manifold.markets/api/v0";
+const API_URL = "https://api.manifold.markets/v0";
 
 //These are errors we've seen during standard operation.
 //Most are related to very old markets from early development that have a different structure.

@@ -68,10 +68,7 @@ Note: `PROB_THRESHOLD` is already declared in `main.ts` — update its value to 
 A NO limit order at `limitProb` fills when the market probability is at or above that level — meaning we're a standing counterparty for YES buyers who push the price up. Setting `limitProb` just above the current probability creates a resting order rather than an immediate market buy, which is how we add liquidity rather than consume it.
 
 ```ts
-const limitProb = Math.min(
-  Math.round((market.probability + 0.02) * 100) / 100,
-  0.95
-);
+const limitProb = Math.round((market.probability + 0.02) * 100) / 100;
 await placeBet({
   contractId: market.id,
   amount: BET_AMOUNT,
@@ -80,7 +77,7 @@ await placeBet({
 });
 ```
 
-The `+0.02` offset means: "I'll buy NO if the price reaches 2 points above where it is now." The `Math.min(..., 0.95)` cap avoids placing orders on markets that are already almost certain YES.
+The `+0.02` offset means: "I'll buy NO if the price reaches 2 points above where it is now."
 
 ## Files to Modify
 
