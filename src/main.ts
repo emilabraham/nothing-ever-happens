@@ -92,6 +92,7 @@ function filterOutIneligibleMarkets(markets: LiteMarket[]): LiteMarket[] {
   log(`Filtering out irrelevant markets...`);
   const filteredMarkets = markets
   .filter((market: LiteMarket) => !market.isResolved)
+  .filter((market: LiteMarket) => market.closeTime == null || market.closeTime > Date.now())
   .filter((market: LiteMarket) => market.outcomeType == `BINARY`)
   .filter((market: LiteMarket) => market.probability >= .25 && market.probability <= .75);
   return filteredMarkets;
