@@ -4,7 +4,7 @@
   "description": "Simple prototype trading bot using Manifold API",
   "scripts": {
     "start": "ts-node src/main.ts",
-    "debug": "node inspect -r ts-node/register src/main.ts"
+    "debug": "DEBUG_CONSOLE=true node inspect -r ts-node/register src/main.ts"
   },
   "author": "Manifold",
   "license": "MIT",
