@@ -114,7 +114,7 @@ export const placeBet = async (bet: {
   outcome: "YES" | "NO";
   amount: number;
   limitProb?: number;
-}) => {
+}): Promise<{ ok: boolean; data: any }> => {
   return fetch(`${API_URL}/bet`, {
     method: "POST",
     headers: {
@@ -122,7 +122,20 @@ export const placeBet = async (bet: {
       Authorization: `Key ${yourKey}`,
     },
     body: JSON.stringify(bet),
-  }).then((res) => res.json());
+  })
+  .then(async (res) => {
+    const data = await res.json();
+    if (!res.ok) {
+      log(`Bet rejected (${res.status}):`, data);
+    } else {
+      log(`Bet placed:`, data);
+    }
+    return { ok: res.ok, data };
+  })
+  .catch((error) => {
+    logError(`Network error placing bet: ${error.message}`);
+    return { ok: false, data: null };
+  });
 };
 
 export const cancelBet = async (betId: string) => {

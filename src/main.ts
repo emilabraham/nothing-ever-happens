@@ -3,6 +3,8 @@ import { log } from "./logger";
 
 const PROBABILITY_THRESHOLD: number = 0.10;
 const BET_AMOUNT: number = 5;
+const MAX_BET_RETRIES: number = 2;
+const BET_RETRY_DELAY_MS: number = 30000;
 
 const main = async () => {
   const username = process.env.MANIFOLD_USERNAME;
@@ -61,25 +63,42 @@ const ineligibleGroupSlugs: string[] = [
 ];
 
 async function placeLimitBet(markets: CategorizedMarkets): Promise<void> {
-  let market: FullMarket = null;
-  let limitProbability: number = 0;
+  const candidates: FullMarket[] = [
+    ...(markets?.highPriorityMarkets ?? []).map((m) => m.market),
+    ...(markets?.normalPriorityMarkets ?? []),
+  ];
 
-  if (markets?.highPriorityMarkets?.length != 0) {
-    market = markets.highPriorityMarkets[0].market;
-  } else if (markets?.normalPriorityMarkets?.length != 0) {
-    market = markets.normalPriorityMarkets[0];
-  }
+  for (const market of candidates) {
+    const limitProbability = Math.round((market.probability + .02) * 100) / 100;
 
-  if (market != null) {
-    limitProbability = Math.round((market.probability + .02) * 100)/100;
-    await placeBet({
+    const placed = await placeBetWithRetry({
       contractId: market?.id,
       amount: BET_AMOUNT,
       outcome: 'NO',
       limitProb: limitProbability
     });
-    log(`Placed a bet on ${market?.question}`);
+
+    if (placed) {
+      log(`Placed a bet on ${market?.question}`);
+      return;
+    }
+
+    log(`Giving up on ${market?.question} after ${MAX_BET_RETRIES + 1} attempts. Moving on to the next market.`);
   }
+}
+
+async function placeBetWithRetry(bet: Parameters<typeof placeBet>[0]): Promise<boolean> {
+  for (let attempt = 1; attempt <= MAX_BET_RETRIES + 1; attempt++) {
+    const { ok } = await placeBet(bet);
+    if (ok) return true;
+
+    if (attempt <= MAX_BET_RETRIES) {
+      log(`Bet on contract ${bet.contractId} failed (attempt ${attempt}/${MAX_BET_RETRIES + 1}). Retrying in ${BET_RETRY_DELAY_MS / 1000} seconds...`);
+      await sleep(BET_RETRY_DELAY_MS);
+    }
+  }
+
+  return false;
 }
 
 function filterAndSortLightMarkets(markets: LiteMarket[]): LiteMarket[] {
