@@ -81,7 +81,7 @@ async function placeLimitBet(markets: CategorizedMarkets): Promise<void> {
     });
 
     if (placed) {
-      log(`Placed a bet on ${market?.question}`);
+      log(`Placed a limit order for ${limitProbability * 100}% on ${market?.question} with current probability ${Math.round(market.probability * 100)}%`);
       return;
     }
 
