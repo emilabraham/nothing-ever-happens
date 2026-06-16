@@ -34,6 +34,8 @@ const main = async () => {
 
   let bettableMarkets: CategorizedMarkets = categorizeMarkets(filteredFullMarkets, bets);
 
+  log(`High-priority market count: ${bettableMarkets.highPriorityMarkets.length}, Low-priority market count: ${bettableMarkets.normalPriorityMarkets.length}`);
+
   await placeLimitBet(bettableMarkets);
 };
 
