@@ -62,7 +62,20 @@ Bet amount is a fixed $5 per run.
    MANIFOLD_USERNAME=YourUsername
    ```
 
-4. Create a `bot.log` file in the root directory of this repo to store logs
-4. Install npm packages with `yarn`
-5. Run `yarn start`
+4. (Optional) Set up Telegram notifications. The bot will send a message whenever it places a bet.
+
+   a. Create a bot via [@BotFather](https://t.me/botfather) on Telegram and copy the token it gives you.
+   b. Start a chat with your bot, then get your chat ID by visiting `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates` and looking for the `chat.id` field in the response.
+   c. Add both values to your `.env`:
+
+   ```
+   TELEGRAM_BOT_TOKEN=123456789:ABCdef...
+   TELEGRAM_CHAT_ID=123456789
+   ```
+
+   If these variables are absent, the bot runs normally without sending any notifications.
+
+5. Create a `bot.log` file in the root directory of this repo to store logs
+6. Install npm packages with `yarn`
+7. Run `yarn start`
 

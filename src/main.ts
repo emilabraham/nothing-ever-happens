@@ -1,5 +1,6 @@
 import { getUserBets, getAllMarkets, getFullMarket, placeBet } from "./api";
 import { log } from "./logger";
+import { sendTelegramNotification } from "./telegram";
 
 const PROBABILITY_THRESHOLD: number = 0.10;
 const BET_AMOUNT: number = 5;
@@ -82,6 +83,9 @@ async function placeLimitBet(markets: CategorizedMarkets): Promise<void> {
 
     if (placed) {
       log(`Placed a limit order for ${limitProbability * 100}% on ${market?.question} with current probability ${Math.round(market.probability * 100)}%`);
+      await sendTelegramNotification(
+        `Placed a limit order on:\n<b>${market?.question}</b>\nLimit: ${limitProbability * 100}% | Current: ${Math.round(market.probability * 100)}%`
+      );
       return;
     }
 
